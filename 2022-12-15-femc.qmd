@@ -1,0 +1,266 @@
+---
+title: "Virtual Environments for Communicating Changing Forests"
+author:
+  - name: "**Michael J Mahoney**"
+    orcid: 0000-0003-2402-304X
+    email: mjmahone@esf.edu
+    url: https://mm218.dev
+  - name: Colin M Beier
+    email: cbeier@esf.edu
+    orcid: 0000-0003-2692-7296
+  - name: Aidan C Ackerman
+    email: acackerm@esf.edu
+    orcid: 0000-0001-7106-0957
+abstract: |
+  Forests are dynamic systems, constantly developing as competition and mortality reshape stand composition and structure over time. However, these changes often happen too slowly for most stakeholders to notice, making it challenging to communicate the long-term impacts of disturbances and management. Visualizations and stakeholder outreach can help to close this gap, but currently most methods for depicting the long-term trajectory of a stand are tailored for expert use and are hard to adapt for a generalist audience.
+
+  This talk describes a new approach for communicating forest change over time to stakeholders, using interactive three-dimensional (3D) and virtual reality (VR) landscape visualizations to depict forests before, during, and following key landscape changes. By providing a concrete visual explanation for what it means for a forest to change, these virtual environments can be powerful tools for communicating the impacts of forest management and natural disturbances over time to a wide variety of stakeholders. As a case study, we demonstrate how these tools can be used to visualize the impacts of beech bark disease on a stand in the central Adirondacks. We also briefly describe how improvements in technology, including the new "terrainr" and "unifir" R packages, are making the production of virtual environments easier and more reproducible.
+format: 
+#  pptx: default
+#    reference-doc: template.pptx
+  revealjs: 
+    standalone: true
+    center: true
+    slide-number: false
+    overview: true
+    width: 1920
+    height: 1080
+    theme: custom.scss
+    footer: Virtual Environments for Communicating Changing Forests - https://mm218.dev/femc2022
+revealjs-plugins:
+  - attribution
+---
+
+
+# About Me
+
+:::: {.columns}
+::: {.column width="50%"}
+
+- Mike Mahoney
+
+- PhD Candidate at SUNY-ESF
+
+- Focusing on visualization, VR and ML as ways to think about large-scale systems
+
+- These slides: [mm218.dev/femc2022](https://mm218.dev/femc2022)
+
+:::
+
+::: {.column width="10%"}
+:::
+
+::: {.column width="40%"}
+
+![](me.png)
+
+:::
+::::
+
+# What's a virtual environment?
+
+---
+
+![](Capture.JPG){.quarto-figure-center}
+
+---
+
+![](boston_flooding.svg){.quarto-figure-center}
+
+---
+
+![](source.png){.quarto-figure-center}
+
+---
+
+![](mort.png){.quarto-figure-center}
+
+# What's the problem?
+
+---
+
+![](logos.png){.quarto-figure-center}
+
+---
+
+![](woodcarving.jpg){.quarto-figure-center}
+
+::: footer
+Photo by <a href="https://unsplash.com/@mlapergolaphoto?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText">Mario La Pergola</a> on <a href="https://unsplash.com/s/photos/woodcarving?utm_source=unsplash&utm_medium=referral&utm_content=creditCopyText">Unsplash</a>
+
+Virtual Environments for Communicating Changing Forests - https://mm218.dev/femc2022
+:::
+
+---
+
+## Missing elements:
+
+<br />
+
+### 1. Reusability
+
+<br />
+
+### 2. Reproducibility
+
+<br />
+
+### 3. Replicability
+
+## What are we doing about it?
+
+
+---
+
+![](pipeline.png){.quarto-figure-center}
+
+---
+
+![](code.png){.quarto-figure-center}
+
+---
+
+![](ex.png){.quarto-figure-center}
+
+---
+
+![](gienke.png){.quarto-figure-center}
+
+<br />
+
+```{r}
+#| warning: false
+#| message: false
+#| echo: true
+
+read.csv("~/data/ifs_all_data.csv") |> head()
+```
+
+::: footer
+Giencke et al. (2014). Can J. For. Res. 44: 1042-1050 doi: 10.1139/cjfr-2014-0038
+
+Virtual Environments for Communicating Changing Forests - https://mm218.dev/femc2022
+:::
+
+---
+
+```{r}
+#| warning: false
+#| message: false
+#| echo: false
+library(dplyr)
+library(ggplot2)
+trees <- read.csv("~/data/ifs_all_data.csv")
+
+trees |> 
+  filter(CODE85 == 1) |> 
+  mutate(YEAR = 1985) |> 
+  rbind(
+    trees |> 
+      filter(CODE00 == 1) |> 
+      mutate(YEAR = 2000)
+  ) |> 
+  rbind(
+    trees |> 
+      filter(CODE09 == 1) |> 
+      mutate(YEAR = 2009)
+  ) |> 
+  select(EAST, NORTH, SPECIES, YEAR) |> 
+  mutate(SPECIES = recode(as.character(SPECIES),
+                          "1" = "Beech",
+                          "10" = "Maple",
+                          "8" = "Maple",
+                          .default = "Other"
+                          ),
+         SPECIES = factor(SPECIES, levels = c("Beech", "Maple", "Other")),
+         EAST = as.numeric(EAST),
+         NORTH = as.numeric(NORTH)) |> 
+  ggplot(aes(EAST, NORTH, shape = SPECIES)) + 
+  scale_x_continuous(limits = c(0, 150)) + 
+  scale_y_continuous(limits = c(0, 150)) + 
+  annotate("segment", x = -Inf, y = -Inf, xend = Inf, yend = -Inf, size = 0.7) + 
+  annotate("segment", x = -Inf, y = -Inf, xend = -Inf, yend = Inf, size = 0.7) + 
+  geom_point(aes(fill = SPECIES), size = 3, alpha = 0.5) + 
+  scale_fill_brewer(name = "Species", palette = "Accent") + 
+  scale_shape_manual(name = "Species", values = 21:25) + 
+  facet_wrap(~ YEAR) + 
+  theme_minimal() %+replace%
+  theme(legend.position = "bottom",
+        plot.background = element_rect(fill = "white", color = NA),
+        text = element_text(family = "Fira Sans"),
+        axis.line = element_line(),
+        panel.grid = element_blank(),
+        axis.text = element_blank(),
+        axis.title = element_text(size = 16),
+        strip.background = element_blank(),
+        strip.text = element_text(size = 18),
+        legend.text = element_text(size = 16),
+        legend.title = element_text(hjust = 0, size = 18),
+        legend.background = element_blank(), 
+        legend.spacing = unit(11, "pt"), 
+        legend.spacing.x = NULL, 
+        legend.spacing.y = NULL, 
+        legend.margin = margin(0, 0, 0, 0), 
+        legend.key = element_blank(), 
+        legend.key.size = unit(1.1 * 12, "pt"), 
+        legend.key.height = NULL, 
+        legend.key.width = NULL, 
+        legend.text.align = NULL, 
+        legend.title.align = NULL, 
+        legend.direction = NULL, 
+        #legend.justification = c("left", "center"), 
+        legend.box = NULL, 
+        legend.box.margin = margin(0, 0, 0, 0), 
+        legend.box.background = element_blank(), 
+        legend.box.spacing = unit(11, "pt")
+        ) + 
+  coord_fixed(1) + 
+  labs(x = "Longitude",
+       y = "Latitude")
+```
+
+---
+
+![](scenes.png){.quarto-figure-center}
+
+---
+
+![](top_1_crop.png){.quarto-figure-center}
+
+---
+
+![](top_2_crop.png){.quarto-figure-center}
+
+---
+
+![](top_3_crop.png){.quarto-figure-center}
+
+---
+
+![](player_1_crop.png){.quarto-figure-center}
+
+---
+
+![](player_2_crop.png){.quarto-figure-center}
+
+---
+
+![](player_3_crop.png){.quarto-figure-center}
+
+## Thank you!
+
+This work was financially supported by the Climate & Applied Forest Research Institute at SUNY-ESF.
+
+<br />
+
+#### Find me online:
+
+{{< fa globe >}} [mm218.dev](https://mm218.dev) 
+
+{{< fa brands github >}} / {{< fa brands twitter >}} @mikemahoney218 
+
+<i class="fab fa-mastodon"></i> [@MikeMahoney218@fosstodon.org](https://fosstodon.org/@MikeMahoney218)
+
+<br />
+
+Slides available at [mm218.dev/femc2022](https://mm218.dev/femc2022)
